@@ -37,6 +37,9 @@ use core::ptr;
 use core::sync::atomic::{AtomicBool, Ordering};
 use cpuarch::vmsa::{VMSASegment, VMSA};
 
+#[cfg(debug_assertions)]
+use core::arch::asm;
+
 #[derive(Debug)]
 struct PerCpuInfo {
     apic_id: u32,
@@ -265,6 +268,10 @@ pub struct PerCpu {
 
     /// Task list that has been assigned for scheduling on this CPU
     runqueue: RWLock<RunQueue>,
+
+    // The borrow count tuple holds (total, mutable) borrow counts.
+    #[cfg(debug_assertions)]
+    borrow_count: (usize, usize),
 }
 
 impl PerCpu {
@@ -284,6 +291,11 @@ impl PerCpu {
             vrange_4k: VirtualRange::new(),
             vrange_2m: VirtualRange::new(),
             runqueue: RWLock::new(RunQueue::new(apic_id)),
+
+            // Every new CPU is constructed with via a raw pointer so no
+            // borrow is active at the time of construction.
+            #[cfg(debug_assertions)]
+            borrow_count: (0, 0),
         }
     }
 
@@ -303,6 +315,15 @@ impl PerCpu {
             (*percpu_shared) = PerCpuShared::new();
 
             let percpu = vaddr.as_mut_ptr::<PerCpu>();
+
+            // The compiler will drop the existing per-CPU storage space before
+            // populating it with a newly constructed object, so the old space
+            // must have its borrow count correctly established first.
+            #[cfg(debug_assertions)]
+            {
+                (*percpu).borrow_count = (1, 1);
+            }
+
             (*percpu) = PerCpu::new(apic_id, &*percpu_shared);
 
             PERCPU_AREAS.push(PerCpuInfo::new(apic_id, shared_vaddr));
@@ -625,12 +646,49 @@ impl PerCpu {
     }
 }
 
+#[cfg(debug_assertions)]
+fn local_assert(test: bool) {
+    if !test {
+        unsafe { asm!("int 3") };
+    }
+}
+
 pub fn this_cpu() -> &'static PerCpu {
-    unsafe { SVSM_PERCPU_BASE.as_ptr::<PerCpu>().as_ref().unwrap() }
+    unsafe {
+        let cpu = SVSM_PERCPU_BASE.as_mut_ptr::<PerCpu>();
+        #[cfg(debug_assertions)]
+        {
+            // Prohibit a shared borrow if a mutable borrow exists.
+            local_assert((*cpu).borrow_count.1 == 0);
+            (*cpu).borrow_count.0 += 1;
+        }
+        &*cpu
+    }
 }
 
 pub fn this_cpu_mut() -> &'static mut PerCpu {
-    unsafe { SVSM_PERCPU_BASE.as_mut_ptr::<PerCpu>().as_mut().unwrap() }
+    unsafe {
+        let cpu = SVSM_PERCPU_BASE.as_mut_ptr::<PerCpu>();
+        #[cfg(debug_assertions)]
+        {
+            // Prohibit a mutable borrow if any other borrow exists.
+            local_assert((*cpu).borrow_count.0 == 0);
+            local_assert((*cpu).borrow_count.1 == 0);
+            (*cpu).borrow_count.0 += 1;
+            (*cpu).borrow_count.1 += 1;
+        }
+        &mut *cpu
+    }
+}
+
+#[cfg(debug_assertions)]
+impl Drop for PerCpu {
+    fn drop(&mut self) {
+        local_assert(self.borrow_count.1 <= 1);
+        self.borrow_count.1 = 0;
+        local_assert(self.borrow_count.0 != 0);
+        self.borrow_count.0 -= 1;
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
