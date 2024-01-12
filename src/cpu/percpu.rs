@@ -32,6 +32,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cell::UnsafeCell;
 use core::mem::size_of;
+use core::ops::{Deref, DerefMut};
 use core::ptr;
 use core::sync::atomic::{AtomicBool, Ordering};
 use cpuarch::vmsa::{VMSASegment, VMSA};
@@ -86,6 +87,24 @@ impl PerCpuAreas {
             let ptr = info.addr.as_ptr::<PerCpuShared>();
             unsafe { ptr.as_ref().unwrap() }
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct VmsaRef<'a> {
+    vmsa: &'a mut VMSA,
+}
+
+impl Deref for VmsaRef<'_> {
+    type Target = VMSA;
+    fn deref(&self) -> &VMSA {
+        self.vmsa
+    }
+}
+
+impl DerefMut for VmsaRef<'_> {
+    fn deref_mut(&mut self) -> &mut VMSA {
+        self.vmsa
     }
 }
 
@@ -172,6 +191,12 @@ impl GuestVmsaRef {
 
     pub fn caa_phys(&self) -> Option<PhysAddr> {
         self.caa
+    }
+
+    pub fn vmsa(&self) -> VmsaRef {
+        VmsaRef {
+            vmsa: unsafe { SVSM_PERCPU_VMSA_BASE.as_mut_ptr::<VMSA>().as_mut().unwrap() },
+        }
     }
 }
 
@@ -498,14 +523,6 @@ impl PerCpu {
 
     pub fn guest_vmsa_ref(&self) -> LockGuard<GuestVmsaRef> {
         self.shared.guest_vmsa.lock()
-    }
-
-    pub fn guest_vmsa(&mut self) -> &mut VMSA {
-        let locked = self.shared.guest_vmsa.lock();
-
-        assert!(locked.vmsa_phys().is_some());
-
-        unsafe { SVSM_PERCPU_VMSA_BASE.as_mut_ptr::<VMSA>().as_mut().unwrap() }
     }
 
     pub fn alloc_guest_vmsa(&mut self) -> Result<(), SvsmError> {
