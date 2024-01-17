@@ -194,6 +194,8 @@ impl GuestVmsaRef {
     }
 
     pub fn vmsa(&self) -> VmsaRef {
+        assert!(self.vmsa.is_some());
+        assert!(self.gen_in_use == self.generation);
         VmsaRef {
             vmsa: unsafe { SVSM_PERCPU_VMSA_BASE.as_mut_ptr::<VMSA>().as_mut().unwrap() },
         }
