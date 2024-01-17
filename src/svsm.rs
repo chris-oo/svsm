@@ -216,7 +216,7 @@ fn launch_fw(config: &SvsmConfig) -> Result<(), SvsmError> {
     let sev_features = vmsa.sev_features;
 
     log::info!("Launching Firmware");
-    this_cpu_mut()
+    this_cpu()
         .ghcb()
         .register_guest_vmsa(vmsa_pa, 0, GUEST_VMPL as u64, sev_features)?;
 

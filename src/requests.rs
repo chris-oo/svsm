@@ -89,7 +89,7 @@ pub fn request_loop() {
 
             flush_tlb_global_sync();
 
-            this_cpu_mut()
+            this_cpu()
                 .ghcb()
                 .run_vmpl(GUEST_VMPL as u64)
                 .expect("Failed to run guest VMPL");

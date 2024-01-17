@@ -8,7 +8,7 @@ extern crate alloc;
 
 use crate::address::PhysAddr;
 use crate::config::SvsmConfig;
-use crate::cpu::percpu::this_cpu_mut;
+use crate::cpu::percpu::this_cpu;
 use crate::error::SvsmError;
 use crate::kernel_region::new_kernel_region;
 use crate::mm::PerCPUPageMappingGuard;
@@ -368,7 +368,7 @@ fn validate_fw_mem_region(
     log::info!("Validating {:#018x}-{:#018x}", pstart, pend);
 
     if config.page_state_change_required() {
-        this_cpu_mut()
+        this_cpu()
             .ghcb()
             .page_state_change(
                 pstart,

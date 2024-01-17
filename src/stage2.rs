@@ -20,7 +20,7 @@ use svsm::console::{init_console, install_console_logger, WRITER};
 use svsm::cpu::cpuid::{dump_cpuid_table, register_cpuid_table};
 use svsm::cpu::gdt::load_gdt;
 use svsm::cpu::idt::stage2::{early_idt_init, early_idt_init_no_ghcb};
-use svsm::cpu::percpu::{this_cpu_mut, PerCpu};
+use svsm::cpu::percpu::{this_cpu, this_cpu_mut, PerCpu};
 use svsm::elf;
 use svsm::fw_cfg::FwCfg;
 use svsm::igvm_params::IgvmParams;
@@ -134,7 +134,7 @@ fn map_and_validate(config: &SvsmConfig, vaddr: VirtAddr, paddr: PhysAddr, len: 
         .expect("Error mapping kernel region");
 
     if config.page_state_change_required() {
-        this_cpu_mut()
+        this_cpu()
             .ghcb()
             .page_state_change(
                 paddr,

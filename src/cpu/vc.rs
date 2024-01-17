@@ -7,7 +7,7 @@
 use super::idt::common::X86ExceptionContext;
 use crate::cpu::cpuid::{cpuid_table_raw, CpuidLeaf};
 use crate::cpu::insn::{insn_fetch, Instruction};
-use crate::cpu::percpu::this_cpu_mut;
+use crate::cpu::percpu::this_cpu;
 use crate::debug::gdbstub::svsm_gdbstub::handle_debug_exception;
 use crate::error::SvsmError;
 use crate::sev::ghcb::{GHCBIOSize, GHCB};
@@ -91,7 +91,7 @@ pub fn stage2_handle_vc_exception(ctx: &mut X86ExceptionContext) {
      * the ioio_{in,ou} methods but it would be better to move the reset out of the different
      * handlers.
      */
-    let ghcb = this_cpu_mut().ghcb();
+    let ghcb = this_cpu().ghcb();
 
     let insn = vc_decode_insn(ctx).expect("Could not decode instructions");
 
@@ -121,7 +121,7 @@ pub fn handle_vc_exception(ctx: &mut X86ExceptionContext) {
      * the ioio_{in,ou} methods but it would be better to move the reset out of the different
      * handlers.
      */
-    let ghcb = this_cpu_mut().ghcb();
+    let ghcb = this_cpu().ghcb();
 
     let insn = vc_decode_insn(ctx).expect("Could not decode instruction");
 

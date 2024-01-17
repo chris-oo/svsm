@@ -16,7 +16,7 @@ use core::{cell::OnceCell, mem::size_of};
 
 use crate::{
     address::VirtAddr,
-    cpu::percpu::this_cpu_mut,
+    cpu::percpu::this_cpu,
     error::SvsmError,
     greq::msg::{SnpGuestRequestExtData, SnpGuestRequestMsg, SnpGuestRequestMsgType},
     locking::SpinLock,
@@ -165,14 +165,11 @@ impl SnpGuestRequestDriver {
 
         if req_class == SnpGuestRequestClass::Extended {
             let num_user_pages = (self.user_extdata_size >> PAGE_SHIFT) as u64;
-            this_cpu_mut().ghcb().guest_ext_request(
-                req_page,
-                resp_page,
-                data_pages,
-                num_user_pages,
-            )?;
+            this_cpu()
+                .ghcb()
+                .guest_ext_request(req_page, resp_page, data_pages, num_user_pages)?;
         } else {
-            this_cpu_mut().ghcb().guest_request(req_page, resp_page)?;
+            this_cpu().ghcb().guest_request(req_page, resp_page)?;
         }
 
         self.seqno_add_two();

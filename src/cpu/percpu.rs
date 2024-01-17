@@ -476,7 +476,7 @@ impl PerCpu {
         self.reset_ip = reset_ip;
     }
 
-    pub fn ghcb(&mut self) -> &'static mut GHCB {
+    pub fn ghcb(&self) -> &'static mut GHCB {
         unsafe { self.ghcb.as_mut().unwrap() }
     }
 

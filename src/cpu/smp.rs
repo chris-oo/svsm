@@ -33,7 +33,7 @@ fn start_cpu(apic_id: u32) {
         let vmsa_pa = vmsa.paddr;
 
         vmsa.vmsa().enable();
-        this_cpu_mut()
+        this_cpu()
             .ghcb()
             .ap_create(vmsa_pa, apic_id.into(), 0, sev_features)
             .expect("Failed to launch secondary CPU");
