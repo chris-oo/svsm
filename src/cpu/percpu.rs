@@ -90,15 +90,15 @@ impl PerCpuAreas {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct VmsaRef {
+pub struct VmsaAddr {
     pub vaddr: VirtAddr,
     pub paddr: PhysAddr,
     pub guest_owned: bool,
 }
 
-impl VmsaRef {
+impl VmsaAddr {
     const fn new(v: VirtAddr, p: PhysAddr, g: bool) -> Self {
-        VmsaRef {
+        VmsaAddr {
             vaddr: v,
             paddr: p,
             guest_owned: g,
@@ -225,7 +225,7 @@ pub struct PerCpu {
     init_stack: Option<VirtAddr>,
     ist: IstStacks,
     tss: X86Tss,
-    svsm_vmsa: Option<VmsaRef>,
+    svsm_vmsa: Option<VmsaAddr>,
     reset_ip: u64,
 
     /// PerCpu Virtual Memory Range
@@ -462,12 +462,12 @@ impl PerCpu {
         let vaddr = allocate_new_vmsa(RMPFlags::GUEST_VMPL)?;
         let paddr = virt_to_phys(vaddr);
 
-        self.svsm_vmsa = Some(VmsaRef::new(vaddr, paddr, false));
+        self.svsm_vmsa = Some(VmsaAddr::new(vaddr, paddr, false));
 
         Ok(())
     }
 
-    pub fn get_svsm_vmsa(&mut self) -> &mut Option<VmsaRef> {
+    pub fn get_svsm_vmsa(&mut self) -> &mut Option<VmsaAddr> {
         &mut self.svsm_vmsa
     }
 
