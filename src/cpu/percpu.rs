@@ -32,7 +32,6 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cell::UnsafeCell;
 use core::mem::size_of;
-use core::ops::{Deref, DerefMut};
 use core::ptr;
 use core::sync::atomic::{AtomicBool, Ordering};
 use cpuarch::vmsa::{VMSASegment, VMSA};
@@ -93,24 +92,6 @@ impl PerCpuAreas {
     }
 }
 
-#[derive(Debug)]
-pub struct VmsaRef<'a> {
-    vmsa: &'a mut VMSA,
-}
-
-impl Deref for VmsaRef<'_> {
-    type Target = VMSA;
-    fn deref(&self) -> &VMSA {
-        self.vmsa
-    }
-}
-
-impl DerefMut for VmsaRef<'_> {
-    fn deref_mut(&mut self) -> &mut VMSA {
-        self.vmsa
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct VmsaAddr {
     pub vaddr: VirtAddr,
@@ -155,7 +136,9 @@ pub struct GuestVmsaRef {
 }
 
 impl GuestVmsaRef {
-    pub const fn new() -> Self {
+    // Downgrade the vis to not-pub, so only this module can construct this and
+    // enforce at-most-once per cpu, guarded by a lock.
+    const fn new() -> Self {
         GuestVmsaRef {
             vmsa: None,
             caa: None,
@@ -196,12 +179,17 @@ impl GuestVmsaRef {
         self.caa
     }
 
-    pub fn vmsa(&self) -> VmsaRef {
+    pub fn vmsa(&mut self) -> &mut VMSA {
         assert!(self.vmsa.is_some());
         assert!(self.gen_in_use == self.generation);
-        VmsaRef {
-            vmsa: unsafe { SVSM_PERCPU_VMSA_BASE.as_mut_ptr::<VMSA>().as_mut().unwrap() },
-        }
+
+        // NOTE: There must be at most one instance of VmsaGuestRef per cpu,
+        // otherwise this is U.B. as another instance could construct another
+        // mutable reference to this VMSA.
+        //
+        // SAFETY: There is only ever one `GuestVmsaRef`` per cpu, as only
+        // `PerCpuShared`` is the struct that hands out `GuestVmsaRef``.
+        unsafe { SVSM_PERCPU_VMSA_BASE.as_mut_ptr::<VMSA>().as_mut().unwrap() }
     }
 }
 

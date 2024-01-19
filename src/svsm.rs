@@ -205,11 +205,11 @@ fn prepare_fw_launch(fw_meta: &SevFWMetaData) -> Result<(), SvsmError> {
 }
 
 fn launch_fw(config: &SvsmConfig) -> Result<(), SvsmError> {
-    let vmsa_ref = this_cpu().guest_vmsa_ref();
+    let mut vmsa_ref = this_cpu().guest_vmsa_ref();
     let vmsa_pa = vmsa_ref.vmsa_phys().unwrap();
-    let mut vmsa = vmsa_ref.vmsa();
+    let vmsa = vmsa_ref.vmsa();
 
-    config.initialize_guest_vmsa(&mut vmsa);
+    config.initialize_guest_vmsa(vmsa);
 
     log::info!("VMSA PA: {:#x}", vmsa_pa);
 

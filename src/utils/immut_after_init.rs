@@ -137,6 +137,14 @@ impl<T> ImmutAfterInitCell<T> {
         Ok(())
     }
 
+    pub fn init_move(&self, v: T) -> ImmutAfterInitResult<()> {
+        self.check_uninit()?;
+        unsafe {
+            (*self.data.get()).write(v);
+        }
+        Ok(())
+    }
+
     /// Reinitialize an initialized `ImmutAfterInitCell` instance from a value.
     ///
     /// Must **not** get called while any borrow via [`Self::deref()`] or

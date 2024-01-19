@@ -81,8 +81,8 @@ pub fn request_loop() {
         // the guest to execute.  When halting, assume that the hypervisor
         // will schedule the guest VMPL on its own.
         if update_mappings().is_ok() {
-            let vmsa_ref = this_cpu().guest_vmsa_ref();
-            let mut vmsa = vmsa_ref.vmsa();
+            let mut vmsa_ref = this_cpu().guest_vmsa_ref();
+            let vmsa = vmsa_ref.vmsa();
 
             // Make VMSA runnable again by setting EFER.SVME
             vmsa.enable();
@@ -108,8 +108,8 @@ pub fn request_loop() {
         // request parameters.
         let mut rax: u64;
         let mut request_info = {
-            let vmsa_ref = this_cpu().guest_vmsa_ref();
-            let mut vmsa = vmsa_ref.vmsa();
+            let mut vmsa_ref = this_cpu().guest_vmsa_ref();
+            let vmsa = vmsa_ref.vmsa();
 
             // Clear EFER.SVME in guest VMSA
             vmsa.disable();
@@ -152,10 +152,10 @@ pub fn request_loop() {
 
         // Write back results
         {
-            let vmsa_ref = this_cpu().guest_vmsa_ref();
-            let mut vmsa = vmsa_ref.vmsa();
+            let mut vmsa_ref = this_cpu().guest_vmsa_ref();
+            let vmsa = vmsa_ref.vmsa();
             vmsa.rax = rax;
-            request_info.params.write_back(&mut vmsa);
+            request_info.params.write_back(vmsa);
         }
     }
 }
